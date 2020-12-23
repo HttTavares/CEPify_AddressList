@@ -1,0 +1,301 @@
+
+##########    IMPORTS
+import consulta_correios as cc
+import pandas as pd
+##########   /IMPORTS
+
+
+
+##########    WORK FLOW
+### 1) Read Address from file
+### 2) Treat Address to use cc
+### 3) Use cc to find possible CEPs from Address
+### 4) Append list of CEPs to file
+##########   /WORK FLOW
+
+
+####################################################################   CODE
+### 1) lendo arquivo
+
+def check_for_numbers(string):
+    digits='0123456789'
+    for digit in digits:
+        if digit in string:
+            return True
+    return False
+
+file=pd.read_csv("usuarios11.csv")
+
+def Read_Address(file, row):
+    return file.iloc[row][7]
+
+def zeroth_check(string):
+    if type(string)==type(1.2):
+        return False
+    if check_for_numbers(string)==False:
+        return False
+    return True
+
+def First_Pass(file, row):
+    adr=Read_Address(file, row)
+    # print(adr)
+    if zeroth_check(adr)==False:
+        # print(adr)
+        return False
+    return True
+### /
+
+### testing 1)
+# for row in range(2300, 2400):
+    # print(type(Read_Address(file, row)))
+    # print(Read_Address(file, row))
+
+### /test (X)
+
+##########################################################################
+
+### 2) Treating Address to use cc
+####### parse string until a number is reached and return everything so far
+#######
+#######
+
+
+
+def reverse_string(string):
+    ret=""
+    i=-1
+    while i>-len(string)-1:
+        ret+=string[i]
+        i-=1
+    return ret
+
+def first_check(string):
+    if type(string) == type(1.2):
+        return False
+    return string
+
+def Checkfor_CEP(string):
+    if first_check(string)!=False:
+        if "cep" in string.lower():
+            return string[string.lower().find("cep"):]
+    return string
+
+def Second_Check(string):
+    digits="1234567890"
+    for digit in digits:
+        if digit in string:
+            return True
+    return False
+
+def Find_FirstNumber(string):
+    digits="1234567890"
+    i=0
+    while string[i] not in digits:
+        i+=1
+    # while string[i] in digits:
+    #     i+=1
+    return string[:i]
+
+def First_Treatment(string):
+    string1=string.lower()
+    string2=string1.replace(",", "")
+    string3=string2.replace("r.", "rua")
+    string4=string3.replace("av.", "avenida")
+    string5=string4.replace("nº", "")
+    string6=string5.replace("número", "")
+    string7=string6.replace(".", '')
+    # string8=string7.replace("á", 'a')
+    # string7 = string6.replace("é", 'e')
+    # string7 = string6.replace("í", 'i')
+    # # string7 = string6.replace(".", '')
+    # # string7 = string6.replace(".", '')
+    # # string7 = string6.replace(".", '')
+    # # string7 = string6.replace(".", '')
+
+    return string6
+
+def Find_Number(string):
+    if Second_Check(string)==True:
+        digits="1234567890"
+        i=0
+        while string[i] not in digits:
+            i+=1
+        # print(i)
+        j=i
+        while string[j] in digits:
+            j+=1
+        # print(j)
+        return int(string[i:j])
+
+def Get_Address(file, row):
+    if first_check(Read_Address(file, row)) != False:
+        if Second_Check(Read_Address(file, row)) != False:
+            return First_Treatment(Find_FirstNumber(Read_Address(file, row)))
+    return ""
+
+### /
+
+### testing 2)
+# for row in range(2300, 2700):
+#     if first_check(Read_Address(file, row)) != False:
+#         if Second_Check(Read_Address(file, row)) != False:
+        #     print([Read_Address(file, row), Checkfor_CEP(Read_Address(file, row))])
+        #     print(primeiro_check(Read_Address(file, row)))
+        #     print([Second_Check(Read_Address(file, row)), row])
+        #     print(find_firstnumber(Read_Address(file, row)))
+        #     print(First_Treatment(Find_FirstNumber(Read_Address(file, row))))
+
+
+### /test ( )
+
+#####################################################
+
+### 3) From string Address, find and treat CEP
+
+def Remove_ExcessCEPs(str, list_of_dicts):
+    ret=[]
+    for dict in list_of_dicts:
+        # print(str)
+        # print(dict["address"].lower())
+        if str[:len(str)-1] in dict["address"].lower():
+            ret.append(dict)
+    return ret
+
+def Get_SecondNumbers(string):
+    if Second_Check(string)==True:
+        digits="0123456789"
+        i=-1
+        ret=""
+        while string[i] not in digits:
+            if i<-len(string)+1:
+                pass
+            i-=1
+            # print(i)
+        while string[i] in digits:
+            ret+=string[i]
+            i-=1
+        ret1=reverse_string(ret)
+        ret1=int(ret1)
+        return ret1
+
+def Get_Interval(string):
+    # ret=[]
+    if "ate" in string.lower():
+        return [0, Find_Number(string)]
+    elif "ao" in string.lower():
+        return [Find_Number(string), 1000000]
+    else:
+        return [Find_Number(string), Get_SecondNumbers(string)]
+
+def TryGet_CEP(string):
+    try:
+        return cc.busca_cep(string+ " rio de janeiro")
+    except:
+        pass
+
+def Third_Check(string):
+    pass
+
+def Select_CepRio(lista_de_dics):
+    ret=[]
+    for dic in lista_de_dics:
+        if type(dic) == type({"a": 1}):
+            if dic["city/state"]=='Rio de Janeiro/RJ':
+                ret.append(dic)
+                # print(dic)
+    return ret
+
+def Decide_Correct(Dictionary_List):
+    if len(Dictionary_List) == 1:
+        # print(Dictionary_List[0]["zipcode"])
+        return Dictionary_List[0]["zipcode"]
+    else:
+        return ""
+
+
+
+#this one should return the correct CEP and is the center of 3)
+def Get_CEP(file, row):
+    if First_Pass(file, row)==False:
+        return ""
+    adr=Get_Address(file,row)
+    lista_de_ceps0=cc.busca_cep(adr)
+    lista_de_ceps1=Select_CepRio(lista_de_ceps0)
+    # lista_de_ceps2=Remove_ExcessCEPs(adr, lista_de_ceps1)
+    CEP=Decide_Correct(lista_de_ceps1)
+    if type(CEP)==type("a"):
+        return CEP
+    else:
+        return ""
+### /3)
+
+
+
+### testing 3)
+# print(TryGet_CEP("rua marquesa de santos"))
+# for row in range(0, 6):
+#     adr=Get_Address(file, row)
+#     lista_de_ceps0 = cc.busca_cep(adr + " rio de janeiro")
+#     print(adr)
+#     print(lista_de_ceps0)
+#     print(len(lista_de_ceps0))
+#     lista_de_ceps1 = Select_CepRio(lista_de_ceps0)
+#     print(lista_de_ceps1)
+#     print(len(lista_de_ceps1))
+    # lista_de_ceps2 = Remove_ExcessCEPs(adr, lista_de_ceps1)
+    # print(lista_de_ceps2)
+    # print(len(lista_de_ceps2))
+    # print(Get_Interval())
+
+# X=cc.busca_cep("Rua Pereira da Silva rio de janeiro")
+# print(len(X), X)
+
+
+
+            # print(Get_SecondNumbers(str))
+            # print(TryGet_CEP(Get_Address(file, row)))
+            # print(Select_CepRio(TryGet_CEP(Get_Address(file, row))))
+            # print(len(Select_CepRio(TryGet_CEP(Get_Address(file, row)))))
+            # print(Get_CEP(file,row))
+
+### /test ( )
+
+
+#####################################################
+
+### 4) Append CEP to df
+
+def Make_CEPlist(beginrow, endrow):
+    ret=[]
+    for row in range(beginrow, endrow):
+        adr = Read_Address(file, row)
+        # print(adr)
+        if first_check(adr) != False:
+            if Second_Check(adr) != False:
+                ret.append(Get_CEP(file,row))
+            else:
+                ret.append("")
+    return ret
+
+def Append_Column_ToDF(list_of_CEPs):
+    file["CEPs"]=pd.Series(list_of_CEPs)
+
+def Seeif_CEPisPresent(file, row):
+    preadr=file.iloc[row][7]
+    if type(preadr)==type("a"):
+        if "cep" in preadr.lower():
+            return preadr[preadr.lower().find("cep")+3:]
+    return None
+
+### /4)
+
+### testing 4)
+# for row in range(0, 50):
+#     print(Get_CEP(file, row))
+
+# print(Make_CEPlist(0, 130))
+# print(len(file))
+
+Lista_de_CEPs=Make_CEPlist(0,len(file))
+Append_Column_ToDF(Lista_de_CEPs)
+file.to_csv('lista11.csv')
